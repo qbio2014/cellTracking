@@ -1,0 +1,47 @@
+ BetaInit=10
+ BetaIncr=1.075
+ BetaMax=100
+ lambda1=1
+ lambda2=1e-007
+ TH=1
+ rEvar=0.0009
+ MaxSplit=3
+ nx=1
+ ny=2
+ if dim=3 nz=3
+ Nid=6
+ Nang=5
+ Nlen=4
+alphaS=0.8
+\\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-084.txt \\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-085.txt
+loaded X - Y points: 207-238
+beta: 11.5563; NonSplits-Drs1-Drs2: 143-2-3; time(sec):  13.017
+beta: 12.423; NonSplits-Drs1-Drs2: 146-2-3; time(sec):  24.487
+beta: 14.3563; NonSplits-Drs1-Drs2: 156-4-5; time(sec):  36.255
+beta: 15.433; NonSplits-Drs1-Drs2: 160-4-5; time(sec):  48.469
+beta: 16.5905; NonSplits-Drs1-Drs2: 162-4-7; time(sec):  58.54
+beta: 17.8348; NonSplits-Drs1-Drs2: 167-4-9; time(sec):  73.208
+beta: 19.1724; NonSplits-Drs1-Drs2: 167-6-10; time(sec):  89.226
+beta: 20.6103; NonSplits-Drs1-Drs2: 168-10-11; time(sec):  105.001
+beta: 22.1561; NonSplits-Drs1-Drs2: 170-11-14; time(sec):  121.066
+beta: 23.8178; NonSplits-Drs1-Drs2: 171-12-14; time(sec):  136.914
+beta: 23.8178; NonSplits-Drs1-Drs2: 172-13-14; time(sec):  146.989
+beta: 25.6041; NonSplits-Drs1-Drs2: 173-15-17; time(sec):  159.664
+beta: 27.5244; NonSplits-Drs1-Drs2: 174-19-20; time(sec):  172.006
+beta: 29.5888; NonSplits-Drs1-Drs2: 176-22-22; time(sec):  184.255
+beta: 31.8079; NonSplits-Drs1-Drs2: 177-23-24; time(sec):  200.161
+beta: 34.1935; NonSplits-Drs1-Drs2: 177-25-26; time(sec):  215.652
+beta: 36.758; NonSplits-Drs1-Drs2: 176-26-27; time(sec):  230.995
+beta: 39.5149; NonSplits-Drs1-Drs2: 176-27-29; time(sec):  246.027
+beta: 42.4785; NonSplits-Drs1-Drs2: 176-27-30; time(sec):  261.495
+beta: 45.6644; NonSplits-Drs1-Drs2: 176-28-30; time(sec):  276.261
+beta: 49.0892; NonSplits-Drs1-Drs2: 176-28-30; time(sec):  291.078
+beta: 52.7709; NonSplits-Drs1-Drs2: 176-29-30; time(sec):  305.458
+beta: 56.7287; NonSplits-Drs1-Drs2: 175-29-30; time(sec):  320.161
+beta: 60.9834; NonSplits-Drs1-Drs2: 175-29-30; time(sec):  334.466
+beta: 65.5572; NonSplits-Drs1-Drs2: 174-29-30; time(sec):  348.265
+beta: 70.4739; NonSplits-Drs1-Drs2: 174-29-30; time(sec):  362.029
+beta: 75.7595; NonSplits-Drs1-Drs2: 175-29-30; time(sec):  375.719
+beta: 81.4414; NonSplits-Drs1-Drs2: 176-29-30; time(sec):  389.41
+beta: 87.5496; NonSplits-Drs1-Drs2: 175-30-30; time(sec):  402.735
+beta: 94.1158; NonSplits-Drs1-Drs2: 175-30-31; time(sec):  416.366

@@ -4,7 +4,7 @@ from skimage.morphology import remove_small_objects
 from skimage.measure import regionprops
 from skimage.io import imread
 from collections import defaultdict
-import glob
+import matplotlib.pyplot as plt
 
 ####################################################################################
 # utility functions
@@ -28,6 +28,16 @@ def xcorr2fft(image1, image2):
     shift_indices = np.asarray(np.unravel_index(c.argmax(), c.shape))
     shift = np.where(np.abs(shift_indices-1)<np.abs(dim-shift_indices+1), -shift_indices, dim-shift_indices)
     return shift
+
+def imread_ilastik(fname, channel, p_cutoff = 0.5):
+    '''
+    read an image from and ilastik h5 file. assumes prediction is in group /volumes/prediction
+    channel specifies the object class to be returned
+    p_cutoff is the threshold for the posterior probability
+    '''
+    import h5py as h5
+    f = h5py.File(fname,'r')
+    return f['/volume/prediction'][:,:,channel]>p_cutoff
 
 def match_mindist(X2, X1, dmax):
     '''
@@ -147,31 +157,43 @@ class labeled_series(object):
         pass
 
 
-    def load_from_file(self, file_mask_seg, file_mask_intensity=None, min_size=None):
+    def load_from_file(self, file_mask_seg, file_mask_intensity=None, min_size=None, channel = 1, p_cutoff = 0.9):
         '''
         loads an image series from file given a search string for segmented images
         optionally takes a corresponding search string for the intensity images
         file list need to be sortable
         '''
-        self.segmentation_files = glob.glob(file_mask_seg)
+        from glob import glob
+        # make list of segmentation files to be loaded, sort them
+        self.segmentation_files = glob(file_mask_seg)
         self.segmentation_files.sort()
+        # determine file format and specify loading function
+        if file_mask_seg.split('.')[-1].startswith('tif'):
+            import_func = imread
+        elif file_mask_seg.split('.')[-1].startswith('h5'):
+            import_func = lambda img:imread_ilastik(img, channel, p_cutoff)
+        else:
+            print 'unsupported image format'
+
+        # if intensity image names are provided, load and sort them too. truncate list if too many images found
         if file_mask_intensity is not None:
-            self.image_files = glob.glob(file_mask_intensity)
+            self.image_files = glob(file_mask_intensity)
             self.image_files.sort()
             if len(self.image_files)>len(self.segmentation_files):
                 self.image_files=self.image_files[:len(self.segmentation_files)]
         
+        # load image and append to self.series
         if len(self.segmentation_files)>0:
             self.series = []
             if file_mask_intensity is not None:
                 for seg_name, img_name in zip(self.segmentation_files, self.image_files):
                     print "reading", seg_name, img_name
-                    self.series.append(labeled_image(imread(seg_name), imread(img_name), 
+                    self.series.append(labeled_image(import_func(seg_name), imread(img_name), 
                                                 min_size))
             else:
                 for seg_name in self.segmentation_files:
                     print "reading", seg_name
-                    self.series.append(labeled_image(imread(seg_name), None, min_size))
+                    self.series.append(labeled_image(import_func(seg_name), None, min_size))
         
             self.dim = self.series[-1].seg_img.shape
         else:
@@ -190,12 +212,6 @@ class labeled_series(object):
                 self.shifts[ii] = xcorr2fft(self.series[ii].seg_img>0, self.series[ii+1].seg_img>0)
             print 'Shift', ii, 'to', ii+1, self.shifts[ii]
 
-    def _init_tree(self, initial_obj):
-        from Bio import Phylo
-        self.tree = Phylo.BaseTree.Tree()
-        self.tree.root.split(len(initial_obj))
-        for (oi,O),child in zip(initial_obj.iteritems(), self.tree.root.clades):
-            child.name = str(oi) 
 
     def track_objects(self, match_func = match_bijective, dmax = 100):
         '''
@@ -214,16 +230,59 @@ class labeled_series(object):
                 self.series[ii+1].parents[child].append(obj1[parent])
 
             print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ii, ii+1, 'respectively'
-
-    def make_colormaps(self):
-        from matplotlib import cm
-        self.colormaps = []
-        self.colormaps.append(cm.jet(np.arange(len(self.series[0].labeled_obj))))
-        for ii in xrange(1,len(self.series)):
-            self.colormaps.append(cm.jet())
     
-    def plot_time_frame(self,ti):
-        plt.imshow(self.series[ii].seg_img, cm=self.colormaps[ii])
+    def add_centroids(self, ti):
+        for label_i, obj in self.series[ti].region_props.iteritems():
+            x,y = obj['centroid']
+            plt.plot([y],[x], 'o')
+        plt.ylim(0,self.series[ti].seg_img.shape[0])
+        plt.xlim(0,self.series[ti].seg_img.shape[1])
+
+    def add_forward_trajectory(self, ti, oi):
+        traj = [self.series[ti].region_props[oi]['centroid']]
+        next_oi = oi
+        next_ti = ti
+        while next_oi in self.series[next_ti].children:
+            next_oi = self.series[next_ti].children[next_oi][0]
+            next_ti += 1
+            traj.append(self.series[next_ti].region_props[next_oi]['centroid'])
+        traj = np.array(traj)
+        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o')        
+
+    def add_backward_trajectory(self, ti, oi):
+        traj = [self.series[ti].region_props[oi]['centroid']]
+        next_oi = oi
+        next_ti = ti
+        while next_oi in self.series[next_ti].parents:
+            next_oi = self.series[next_ti].parents[next_oi][0]
+            next_ti -= 1
+            traj.append(self.series[next_ti].region_props[next_oi]['centroid'])
+        traj = np.array(traj)
+        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o')        
+
+    def plot_image_and_centroids(self, ti, ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111)
+        try:
+            ax.imshow(self.series[ti].img, interpolation='nearest')
+        except:
+            ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
+        self.add_centroids(ti)        
+        
+    def plot_image_and_trajectories(self, ti, ax=None, bwd = False, fwd = True):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111)
+        try:
+            ax.imshow(self.series[ti].img, interpolation='nearest')
+        except:
+            ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
+        for oi in self.series[ti].region_props:
+            if fwd: self.add_forward_trajectory(ti,oi)        
+            if bwd: self.add_backward_trajectory(ti,oi)        
+        plt.ylim(0,self.series[ti].seg_img.shape[0])
+        plt.xlim(0,self.series[ti].seg_img.shape[1])
 
 if __name__ == '__main__':
 
@@ -250,5 +309,8 @@ if __name__ == '__main__':
     test_series.load_from_file('../Movie_sample/Yutao1-17_1-t-???_seg.tif', '../Movie_sample/Yutao1-17_1-t-???.tif')
     test_series.calc_image_shifts()
     test_series.track_objects(match_func=match_mindist)
-
+    test_series.plot_image_and_centroids(15)
+    test_series.add_centroids(16)
+    
+    test_series.plot_image_and_trajectories(15, fwd=True, bwd=False)
     

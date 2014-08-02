@@ -1,0 +1,17 @@
+ BetaInit=10
+ BetaIncr=1.075
+ BetaMax=100
+ lambda1=1
+ lambda2=1e-007
+ TH=1
+ rEvar=0.0009
+ MaxSplit=3
+ nx=1
+ ny=2
+ if dim=3 nz=3
+ Nid=6
+ Nang=5
+ Nlen=4
+alphaS=0.8
+\\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-022.txt \\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-023.txt
+loaded X - Y points: 10-10

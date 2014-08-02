@@ -1,0 +1,40 @@
+ BetaInit=10
+ BetaIncr=1.075
+ BetaMax=100
+ lambda1=1
+ lambda2=1e-007
+ TH=1
+ rEvar=0.0009
+ MaxSplit=3
+ nx=1
+ ny=2
+ if dim=3 nz=3
+ Nid=6
+ Nang=5
+ Nlen=4
+alphaS=0.8
+\\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-081.txt \\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-082.txt
+loaded X - Y points: 174-188
+beta: 12.423; NonSplits-Drs1-Drs2: 143-0-0; time(sec):  10.373
+beta: 14.3563; NonSplits-Drs1-Drs2: 148-0-0; time(sec):  21.232
+beta: 16.5905; NonSplits-Drs1-Drs2: 148-1-0; time(sec):  32.642
+beta: 17.8348; NonSplits-Drs1-Drs2: 149-1-0; time(sec):  42.707
+beta: 19.1724; NonSplits-Drs1-Drs2: 150-1-0; time(sec):  54.305
+beta: 20.6103; NonSplits-Drs1-Drs2: 151-2-0; time(sec):  64.323
+beta: 22.1561; NonSplits-Drs1-Drs2: 151-3-0; time(sec):  74.73
+beta: 23.8178; NonSplits-Drs1-Drs2: 152-3-1; time(sec):  84.781
+beta: 25.6041; NonSplits-Drs1-Drs2: 153-6-4; time(sec):  95.228
+beta: 27.5244; NonSplits-Drs1-Drs2: 152-7-4; time(sec):  105.568
+beta: 29.5888; NonSplits-Drs1-Drs2: 152-7-5; time(sec):  115.748
+beta: 34.1935; NonSplits-Drs1-Drs2: 154-8-6; time(sec):  129.572
+beta: 36.758; NonSplits-Drs1-Drs2: 154-8-6; time(sec):  141.354
+beta: 39.5149; NonSplits-Drs1-Drs2: 156-9-8; time(sec):  152.95
+beta: 42.4785; NonSplits-Drs1-Drs2: 155-9-8; time(sec):  164.51
+beta: 49.0892; NonSplits-Drs1-Drs2: 158-10-9; time(sec):  177.863
+beta: 52.7709; NonSplits-Drs1-Drs2: 157-11-11; time(sec):  189.167
+beta: 56.7287; NonSplits-Drs1-Drs2: 157-13-13; time(sec):  200.29
+beta: 60.9834; NonSplits-Drs1-Drs2: 157-13-13; time(sec):  211.208
+beta: 70.4739; NonSplits-Drs1-Drs2: 157-13-13; time(sec):  223.716
+beta: 75.7595; NonSplits-Drs1-Drs2: 156-14-14; time(sec):  234.429
+beta: 81.4414; NonSplits-Drs1-Drs2: 156-14-14; time(sec):  245.118
+beta: 87.5496; NonSplits-Drs1-Drs2: 156-14-14; time(sec):  255.466

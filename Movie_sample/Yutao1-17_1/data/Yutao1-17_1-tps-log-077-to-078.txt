@@ -1,0 +1,28 @@
+ BetaInit=10
+ BetaIncr=1.075
+ BetaMax=100
+ lambda1=1
+ lambda2=1e-007
+ TH=1
+ rEvar=0.0009
+ MaxSplit=3
+ nx=1
+ ny=2
+ if dim=3 nz=3
+ Nid=6
+ Nang=5
+ Nlen=4
+alphaS=0.8
+\\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-077.txt \\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-078.txt
+loaded X - Y points: 125-128
+beta: 15.433; NonSplits-Drs1-Drs2: 119-0-0; time(sec):  10.372
+beta: 19.1724; NonSplits-Drs1-Drs2: 123-0-0; time(sec):  20.885
+beta: 22.1561; NonSplits-Drs1-Drs2: 123-0-0; time(sec):  31.412
+beta: 27.5244; NonSplits-Drs1-Drs2: 122-1-1; time(sec):  43.061
+beta: 31.8079; NonSplits-Drs1-Drs2: 122-3-3; time(sec):  53.149
+beta: 36.758; NonSplits-Drs1-Drs2: 122-3-3; time(sec):  63.438
+beta: 42.4785; NonSplits-Drs1-Drs2: 122-3-3; time(sec):  73.563
+beta: 52.7709; NonSplits-Drs1-Drs2: 122-3-3; time(sec):  84.475
+beta: 60.9834; NonSplits-Drs1-Drs2: 122-3-3; time(sec):  95.291
+beta: 75.7595; NonSplits-Drs1-Drs2: 122-3-3; time(sec):  106.809
+beta: 87.5496; NonSplits-Drs1-Drs2: 122-3-3; time(sec):  116.997

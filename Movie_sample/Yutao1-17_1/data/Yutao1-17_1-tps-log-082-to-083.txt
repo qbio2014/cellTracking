@@ -1,0 +1,43 @@
+ BetaInit=10
+ BetaIncr=1.075
+ BetaMax=100
+ lambda1=1
+ lambda2=1e-007
+ TH=1
+ rEvar=0.0009
+ MaxSplit=3
+ nx=1
+ ny=2
+ if dim=3 nz=3
+ Nid=6
+ Nang=5
+ Nlen=4
+alphaS=0.8
+\\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-082.txt \\NASOWITZ\Temp\Yutao\PadMovie20131229\2013-12-29\Yutao1-17_1\data\Yutao1-17_1-tps-input-083.txt
+loaded X - Y points: 188-194
+beta: 11.5563; NonSplits-Drs1-Drs2: 153-0-0; time(sec):  10.444
+beta: 14.3563; NonSplits-Drs1-Drs2: 166-0-0; time(sec):  22.271
+beta: 15.433; NonSplits-Drs1-Drs2: 169-0-0; time(sec):  33.426
+beta: 17.8348; NonSplits-Drs1-Drs2: 169-0-0; time(sec):  46.727
+beta: 19.1724; NonSplits-Drs1-Drs2: 170-0-0; time(sec):  57.62
+beta: 20.6103; NonSplits-Drs1-Drs2: 170-0-0; time(sec):  68.662
+beta: 22.1561; NonSplits-Drs1-Drs2: 170-0-0; time(sec):  81.163
+beta: 23.8178; NonSplits-Drs1-Drs2: 174-0-0; time(sec):  92.282
+beta: 25.6041; NonSplits-Drs1-Drs2: 174-1-0; time(sec):  103.475
+beta: 27.5244; NonSplits-Drs1-Drs2: 175-2-2; time(sec):  114.567
+beta: 29.5888; NonSplits-Drs1-Drs2: 175-2-2; time(sec):  125.626
+beta: 31.8079; NonSplits-Drs1-Drs2: 177-4-4; time(sec):  136.53
+beta: 34.1935; NonSplits-Drs1-Drs2: 177-4-4; time(sec):  147.561
+beta: 36.758; NonSplits-Drs1-Drs2: 176-5-5; time(sec):  158.584
+beta: 39.5149; NonSplits-Drs1-Drs2: 176-5-5; time(sec):  169.226
+beta: 42.4785; NonSplits-Drs1-Drs2: 176-5-5; time(sec):  179.96
+beta: 45.6644; NonSplits-Drs1-Drs2: 176-6-6; time(sec):  190.504
+beta: 49.0892; NonSplits-Drs1-Drs2: 177-7-6; time(sec):  200.926
+beta: 52.7709; NonSplits-Drs1-Drs2: 178-7-7; time(sec):  211.234
+beta: 56.7287; NonSplits-Drs1-Drs2: 178-7-7; time(sec):  221.41
+beta: 60.9834; NonSplits-Drs1-Drs2: 178-7-7; time(sec):  231.568
+beta: 65.5572; NonSplits-Drs1-Drs2: 179-7-7; time(sec):  241.722
+beta: 70.4739; NonSplits-Drs1-Drs2: 179-7-7; time(sec):  253.659
+beta: 75.7595; NonSplits-Drs1-Drs2: 179-7-7; time(sec):  265.458
+beta: 81.4414; NonSplits-Drs1-Drs2: 179-7-7; time(sec):  277.15
+beta: 94.1158; NonSplits-Drs1-Drs2: 179-7-7; time(sec):  290.094
