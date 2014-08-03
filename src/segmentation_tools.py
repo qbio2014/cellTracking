@@ -164,6 +164,7 @@ class labeled_series(object):
         file list need to be sortable
         '''
         from glob import glob
+        from matplotlib import cm
         # make list of segmentation files to be loaded, sort them
         self.segmentation_files = glob(file_mask_seg)
         self.segmentation_files.sort()
@@ -196,6 +197,7 @@ class labeled_series(object):
                     self.series.append(labeled_image(import_func(seg_name), None, min_size))
         
             self.dim = self.series[-1].seg_img.shape
+            self.colorlookup = [cm.jet for ii in range(len(self.series))]
         else:
             print "no images found at", file_mask_seg
 
@@ -234,7 +236,7 @@ class labeled_series(object):
     def add_centroids(self, ti):
         for label_i, obj in self.series[ti].region_props.iteritems():
             x,y = obj['centroid']
-            plt.plot([y],[x], 'o')
+            plt.plot([y],[x], 'o', c=self.colorlookup[ti](label_i))
         plt.ylim(0,self.series[ti].seg_img.shape[0])
         plt.xlim(0,self.series[ti].seg_img.shape[1])
 
@@ -247,7 +249,7 @@ class labeled_series(object):
             next_ti += 1
             traj.append(self.series[next_ti].region_props[next_oi]['centroid'])
         traj = np.array(traj)
-        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o')        
+        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o', c=self.colorlookup[ti](oi))     
 
     def add_backward_trajectory(self, ti, oi):
         traj = [self.series[ti].region_props[oi]['centroid']]
@@ -258,7 +260,7 @@ class labeled_series(object):
             next_ti -= 1
             traj.append(self.series[next_ti].region_props[next_oi]['centroid'])
         traj = np.array(traj)
-        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o')        
+        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o', c=self.colorlookup[ti](oi))        
 
     def plot_image_and_centroids(self, ti, ax=None):
         if ax is None:
