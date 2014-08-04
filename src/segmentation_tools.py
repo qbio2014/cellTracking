@@ -5,6 +5,7 @@ from skimage.measure import regionprops
 from skimage.io import imread
 from collections import defaultdict
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 ####################################################################################
 # utility functions
@@ -35,9 +36,9 @@ def imread_ilastik(fname, channel, p_cutoff = 0.5):
     channel specifies the object class to be returned
     p_cutoff is the threshold for the posterior probability
     '''
-    import h5py as h5
+    import h5py
     f = h5py.File(fname,'r')
-    return f['/volume/prediction'][:,:,channel]>p_cutoff
+    return np.asarray(f['volume']['prediction']).squeeze()[:,:,channel]>p_cutoff
 
 def match_mindist(X2, X1, dmax):
     '''
@@ -140,13 +141,13 @@ class labeled_image(segmented_image):
         filter the list of objects by a given property using a lower and upper threshold.
         updates self.obj_list with objects passing filter only
         '''
-        self.obj_list= [obj for obj in self.region_props
+        self.obj_list= [label_i for label_i, obj in self.region_props.iteritems()
                             if obj[prop]>=lower_th and obj[prop]<upper_th]
         self.obj_list.sort()
         return self.obj_list
 
 
-
+#################################################################################
 
 class labeled_series(object):
     '''
@@ -154,7 +155,9 @@ class labeled_series(object):
     series
     '''
     def __init__(self):
-        pass
+        self.colorlookup = {}  # dictionary of dictionaries assigning colors to obj in time slices
+        self.series = []       # list holding the labeled images of the experiment
+        self.shifts = None     # two dimensional shifts of an image relative to its predecessor
 
 
     def load_from_file(self, file_mask_seg, file_mask_intensity=None, min_size=None, channel = 1, p_cutoff = 0.9):
@@ -164,7 +167,6 @@ class labeled_series(object):
         file list need to be sortable
         '''
         from glob import glob
-        from matplotlib import cm
         # make list of segmentation files to be loaded, sort them
         self.segmentation_files = glob(file_mask_seg)
         self.segmentation_files.sort()
@@ -185,7 +187,6 @@ class labeled_series(object):
         
         # load image and append to self.series
         if len(self.segmentation_files)>0:
-            self.series = []
             if file_mask_intensity is not None:
                 for seg_name, img_name in zip(self.segmentation_files, self.image_files):
                     print "reading", seg_name, img_name
@@ -197,9 +198,18 @@ class labeled_series(object):
                     self.series.append(labeled_image(import_func(seg_name), None, min_size))
         
             self.dim = self.series[-1].seg_img.shape
-            self.colorlookup = [cm.jet for ii in range(len(self.series))]
+            [self.color_randomly(ti) for ti in range(len(self.series))]
         else:
             print "no images found at", file_mask_seg
+
+    def filter_objects(self, prop, lower_th, upper_th):
+        '''
+        loops over all time points and filters the objects at this time point according to 
+        a given criterion of regionprops with upper and lower threshold
+        TODO add AND and OR operations for multiple conditions
+        '''
+        for labeled_img in self.series:
+            labeled_img.filter_objects(prop, lower_th, upper_th)
 
     def calc_image_shifts(self):
         '''
@@ -232,15 +242,65 @@ class labeled_series(object):
                 self.series[ii+1].parents[child].append(obj1[parent])
 
             print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ii, ii+1, 'respectively'
+
+    ####################################################################
+    ### coloring
+    ####################################################################
+    def color_randomly(self,ti):
+        '''
+        resets the color lookup of time point ti to random choices of the jet colormap
+        '''
+        self.colorlookup[ti] = {oi:cm.jet(np.random.randint(256)) for oi in self.series[ti].obj_list}
+
+    def color_as_parent(self, ti):
+        '''
+        redo the color assignment by assigning each object the same color 
+        as that of its parent
+        ti -- time slice to operate on
+        '''
+        assert ti>0
+        cur = self.series[ti]
+        parent_colors = self.colorlookup[ti-1]
+        temp_colors = {}
+        for oi in cur.obj_list:
+            if oi in cur.parents: # if node has parent, assign parent color
+                temp_colors[oi] = parent_colors[cur.parents[oi][0]]
+            else: # otherwise assign random color
+                temp_colors[oi] = cm.jet(np.random.randint(256))
+        self.colorlookup[ti]=temp_colors
+
+    def color_lineages(self, initial_frame = 0):
+        '''
+        assign random colors to the initial frame, color all subsequent frames sa parent
+        '''
+        self.color_randomly(initial_frame)
+        for ti in xrange(initial_frame+1, len(self.series)):
+            self.color_as_parent(ti)
+
+
+    ####################################################################
+    ### plotting
+    ####################################################################
     
     def add_centroids(self, ti):
-        for label_i, obj in self.series[ti].region_props.iteritems():
-            x,y = obj['centroid']
-            plt.plot([y],[x], 'o', c=self.colorlookup[ti](label_i))
+        '''
+        adds a colored dot (according to the colorlookup) at the centroid of each
+        object passing filter criteria of time point ti.
+        uses the current axis
+        '''
+        for label_i in self.series[ti].obj_list:
+            x,y = self.series[ti].region_props[label_i]['centroid']
+            plt.plot([y],[x], 'o', c=self.colorlookup[ti][label_i])
         plt.ylim(0,self.series[ti].seg_img.shape[0])
         plt.xlim(0,self.series[ti].seg_img.shape[1])
 
     def add_forward_trajectory(self, ti, oi):
+        '''
+        starting with object oi at time points oi, looks for one
+        descendant in subsequent time slices and constructs a trajectory 
+        of the centroids. adds this trajectory to the current axis. 
+        NOTE: this always uses child[0]
+        '''
         traj = [self.series[ti].region_props[oi]['centroid']]
         next_oi = oi
         next_ti = ti
@@ -249,9 +309,15 @@ class labeled_series(object):
             next_ti += 1
             traj.append(self.series[next_ti].region_props[next_oi]['centroid'])
         traj = np.array(traj)
-        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o', c=self.colorlookup[ti](oi))     
+        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o', c=self.colorlookup[ti][oi])     
 
     def add_backward_trajectory(self, ti, oi):
+        '''
+        starting with object oi at time points oi, looks for the
+        ancestor in previous time slices and constructs a trajectory 
+        of the centroids. adds this trajectory to the current axis. 
+        NOTE: this always uses child[0]
+        '''
         traj = [self.series[ti].region_props[oi]['centroid']]
         next_oi = oi
         next_ti = ti
@@ -260,19 +326,29 @@ class labeled_series(object):
             next_ti -= 1
             traj.append(self.series[next_ti].region_props[next_oi]['centroid'])
         traj = np.array(traj)
-        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o', c=self.colorlookup[ti](oi))        
+        plt.plot(traj[:,1], traj[:,0], ls='-', marker = 'o', c=self.colorlookup[ti][oi])        
 
     def plot_image_and_centroids(self, ti, ax=None):
-        if ax is None:
+        '''
+        plots the intensity image (if not available the labeled image) and adds
+        dots at the centroids of each object passing filters. Constructs a new figure
+        if no axis is given
+        '''
+        if ax is None: # make new figure if necessary
             fig = plt.figure()
             ax = plt.subplot(111)
-        try:
+        try:  # plot intensity image if available
             ax.imshow(self.series[ti].img, interpolation='nearest')
-        except:
+        except: # fallback to labeled image
             ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
         self.add_centroids(ti)        
         
     def plot_image_and_trajectories(self, ti, ax=None, bwd = False, fwd = True):
+        '''
+        plots the intensity image (if not available the labeled image) and adds
+        dots at the trajectory of centroids of each object passing filters. Constructs a new figure
+        if no axis is given. backward and forward trajectories can be specified.
+        '''
         if ax is None:
             fig = plt.figure()
             ax = plt.subplot(111)
@@ -280,11 +356,24 @@ class labeled_series(object):
             ax.imshow(self.series[ti].img, interpolation='nearest')
         except:
             ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
-        for oi in self.series[ti].region_props:
+        for oi in self.series[ti].obj_list:
             if fwd: self.add_forward_trajectory(ti,oi)        
             if bwd: self.add_backward_trajectory(ti,oi)        
         plt.ylim(0,self.series[ti].seg_img.shape[0])
         plt.xlim(0,self.series[ti].seg_img.shape[1])
+
+    def save_QC_series(self,save_path, img_format='png'):
+        '''
+        saves each time frame to file and adds the centroids of subsequent time slices.
+        '''
+        for ti in xrange(len(self.series)):
+            self.plot_image_and_centroids(ti)
+            if ti>0:
+                self.add_centroids(ti-1)
+            plt.savefig(save_path+format(ti,'03d')+'.'+img_format)
+            plt.close()
+
+
 
 if __name__ == '__main__':
 
@@ -308,11 +397,15 @@ if __name__ == '__main__':
     
     # 
     test_series = labeled_series()
-    test_series.load_from_file('../Movie_sample/Yutao1-17_1-t-???_seg.tif', '../Movie_sample/Yutao1-17_1-t-???.tif')
+    #test_series.load_from_file('../Movie_sample/Yutao1-17_1-t-???_seg.tif', '../Movie_sample/Yutao1-17_1-t-???.tif')
+    test_series.load_from_file('../sample/proc/mem????.tif_processed.h5', '../sample/raw/mem????.tif')
     test_series.calc_image_shifts()
+    test_series.filter_objects('area', lower_th = 100, upper_th = 10000)
     test_series.track_objects(match_func=match_mindist)
-    test_series.plot_image_and_centroids(15)
-    test_series.add_centroids(16)
-    
-    test_series.plot_image_and_trajectories(15, fwd=True, bwd=False)
-    
+    test_series.color_lineages()
+    test_series.save_QC_series('tmp/img_')
+
+    test_series.plot_image_and_centroids(5)
+    test_series.add_centroids(6)    
+    test_series.plot_image_and_trajectories(5, fwd=True, bwd=False)
+
