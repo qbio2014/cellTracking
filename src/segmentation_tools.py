@@ -144,6 +144,10 @@ class labeled_image(segmented_image):
         self.obj_list= [label_i for label_i, obj in self.region_props.iteritems()
                             if obj[prop]>=lower_th and obj[prop]<upper_th]
         self.obj_list.sort()
+        # reset the parents and children since assignments have been invalidated after
+        # redefining the object set.
+        self.parents = defaultdict(list)
+        self.children = defaultdict(list)
         return self.obj_list
 
 
@@ -229,6 +233,9 @@ class labeled_series(object):
         '''
         loops over the image series and applices the match_func to each pair of images
         '''
+        if self.shifts is None:
+            self.calc_image_shifts()
+
         for ii in xrange(len(self.series)-1):
             obj1, obj2 = self.series[ii].obj_list, self.series[ii+1].obj_list
             points1 = np.array([self.series[ii].region_props[obj]['centroid'] for obj in obj1])
