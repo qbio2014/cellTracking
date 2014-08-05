@@ -345,9 +345,9 @@ class labeled_series(object):
             fig = plt.figure()
             ax = plt.subplot(111)
         try:  # plot intensity image if available
-            ax.imshow(self.series[ti].img, interpolation='nearest')
+            ax.imshow(self.series[ti].img, interpolation='nearest', cmap = cm.gray)
         except: # fallback to labeled image
-            ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
+            ax.imshow(self.series[ti].labeled_img, interpolation='nearest', cmap = cm.gray)
         self.add_centroids(ti)        
         
     def plot_image_and_trajectories(self, ti, ax=None, bwd = False, fwd = True):
@@ -360,9 +360,9 @@ class labeled_series(object):
             fig = plt.figure()
             ax = plt.subplot(111)
         try:
-            ax.imshow(self.series[ti].img, interpolation='nearest')
+            ax.imshow(self.series[ti].img, interpolation='nearest',cmap = cm.gray)
         except:
-            ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
+            ax.imshow(self.series[ti].labeled_img, interpolation='nearest',cmap = cm.gray)
         for oi in self.series[ti].obj_list:
             if fwd: self.add_forward_trajectory(ti,oi)        
             if bwd: self.add_backward_trajectory(ti,oi)        
