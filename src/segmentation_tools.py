@@ -6,6 +6,7 @@ from skimage.io import imread
 from collections import defaultdict
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from Bio import Phylo
 
 ####################################################################################
 # utility functions
@@ -144,6 +145,10 @@ class labeled_image(segmented_image):
         self.obj_list= [label_i for label_i, obj in self.region_props.iteritems()
                             if obj[prop]>=lower_th and obj[prop]<upper_th]
         self.obj_list.sort()
+        # reset the parents and children since assignments have been invalidated after
+        # redefining the object set.
+        self.parents = defaultdict(list)
+        self.children = defaultdict(list)
         return self.obj_list
 
 
@@ -158,6 +163,7 @@ class labeled_series(object):
         self.colorlookup = {}  # dictionary of dictionaries assigning colors to obj in time slices
         self.series = []       # list holding the labeled images of the experiment
         self.shifts = None     # two dimensional shifts of an image relative to its predecessor
+        self.trees = []
 
 
     def load_from_file(self, file_mask_seg, file_mask_intensity=None, min_size=None, channel = 1, p_cutoff = 0.9):
@@ -229,6 +235,9 @@ class labeled_series(object):
         '''
         loops over the image series and applices the match_func to each pair of images
         '''
+        if self.shifts is None:
+            self.calc_image_shifts()
+
         for ii in xrange(len(self.series)-1):
             obj1, obj2 = self.series[ii].obj_list, self.series[ii+1].obj_list
             points1 = np.array([self.series[ii].region_props[obj]['centroid'] for obj in obj1])
@@ -242,6 +251,44 @@ class labeled_series(object):
                 self.series[ii+1].parents[child].append(obj1[parent])
 
             print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ii, ii+1, 'respectively'
+
+    ####################################################################
+    ### Phylogeny
+    ####################################################################
+
+    def find_trees(self):
+        '''
+        loops overall time points and finds objects without parents
+        for each, generate a new tree
+        '''
+        self.trees = []
+        for ti,tp in enumerate(self.series):
+            for oi in tp.obj_list:
+                if oi not in tp.parents: # oi does not have a parent
+                    print "new tree found at time",ti, "with object id",oi
+                    self.trees.append((ti, self.build_tree(ti,oi)))
+
+    def build_tree(self,ti,oi):
+        '''
+        given a root, construct a BioPython tree and call a function that recursively adds 
+        subtrees for all children of the root. The tree object is returned
+        '''
+        new_tree = Phylo.BaseTree.Tree()
+        new_tree.root.name = str((ti,oi))
+        self.add_subtree(new_tree.root, ti, oi)
+        return new_tree
+
+    def add_subtree(self, clade, ti, oi):
+        '''
+        recursively add children to the tree.
+        '''
+        node_children = self.series[ti].children[oi]
+        clade.split(len(node_children))
+        for ci,child in enumerate(node_children):
+            clade.clades[ci].name = str((ti+1,child))
+            self.add_subtree(clade.clades[ci], ti+1, child)
+    
+
 
     ####################################################################
     ### coloring
@@ -338,9 +385,9 @@ class labeled_series(object):
             fig = plt.figure()
             ax = plt.subplot(111)
         try:  # plot intensity image if available
-            ax.imshow(self.series[ti].img, interpolation='nearest')
+            ax.imshow(self.series[ti].img, interpolation='nearest', cmap = cm.gray)
         except: # fallback to labeled image
-            ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
+            ax.imshow(self.series[ti].labeled_img, interpolation='nearest', cmap = cm.gray)
         self.add_centroids(ti)        
         
     def plot_image_and_trajectories(self, ti, ax=None, bwd = False, fwd = True):
@@ -353,23 +400,25 @@ class labeled_series(object):
             fig = plt.figure()
             ax = plt.subplot(111)
         try:
-            ax.imshow(self.series[ti].img, interpolation='nearest')
+            ax.imshow(self.series[ti].img, interpolation='nearest',cmap = cm.gray)
         except:
-            ax.imshow(self.series[ti].labeled_img, interpolation='nearest')
+            ax.imshow(self.series[ti].labeled_img, interpolation='nearest',cmap = cm.gray)
         for oi in self.series[ti].obj_list:
             if fwd: self.add_forward_trajectory(ti,oi)        
             if bwd: self.add_backward_trajectory(ti,oi)        
         plt.ylim(0,self.series[ti].seg_img.shape[0])
         plt.xlim(0,self.series[ti].seg_img.shape[1])
 
-    def save_QC_series(self,save_path, img_format='png'):
+    def save_QC_series(self,save_path, additional_tps = [], img_format='png'):
         '''
         saves each time frame to file and adds the centroids of subsequent time slices.
         '''
         for ti in xrange(len(self.series)):
             self.plot_image_and_centroids(ti)
-            if ti>0:
-                self.add_centroids(ti-1)
+            if len(additional_tps):
+                for dt in additional_tps:
+                    if ti>dt:
+                        self.add_centroids(ti+dt)
             plt.savefig(save_path+format(ti,'03d')+'.'+img_format)
             plt.close()
 
