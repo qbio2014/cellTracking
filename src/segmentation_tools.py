@@ -217,18 +217,25 @@ class labeled_series(object):
         for labeled_img in self.series:
             labeled_img.filter_objects(prop, lower_th, upper_th)
 
-    def calc_image_shifts(self):
+    def calc_image_shifts(self, channel=None):
         '''
         loops over the series of images and calculates the most likely shift
-        by which image ii differs from image ii+1
+        by which image ti differs from image ti+1
         '''
         self.shifts = np.zeros((len(self.series)-1, len(self.dim)))
-        for ii in xrange(len(self.series)-1):
+        for ti in xrange(len(self.series)-1):
             try:
-                self.shifts[ii] = xcorr2fft(self.series[ii].img, self.series[ii+1].img)
+                if channel is None:
+                    if len(self.series[ti].img.shape)==2:
+                        img1, img2 = self.series[ti].img, self.series[ti+1].img
+                    else:
+                        img1, img2 = self.series[ti].img.max(axis=-1), self.series[ti+1].img.max(axis=-1)
+                else:
+                    img1, img2 = self.series[ti].img[:,:,channel], self.series[ti+1].img[:,:,channel]
             except:
-                self.shifts[ii] = xcorr2fft(self.series[ii].seg_img>0, self.series[ii+1].seg_img>0)
-            print 'Shift', ii, 'to', ii+1, self.shifts[ii]
+                img1, img2 = self.series[ti].seg_img>0, self.series[ti+1].seg_img>0
+            self.shifts[ti] = xcorr2fft(img1, img2)
+            print 'Shift', ti, 'to', ti+1, self.shifts[ti]
 
 
     def track_objects(self, match_func = match_bijective, dmax = 1000):
@@ -238,18 +245,17 @@ class labeled_series(object):
         if self.shifts is None:
             self.calc_image_shifts()
 
-        for ii in xrange(len(self.series)-1):
-            obj1, obj2 = self.series[ii].obj_list, self.series[ii+1].obj_list
-            points1 = np.array([self.series[ii].region_props[obj]['centroid'] for obj in obj1])
-            points2 = np.array([self.series[ii+1].region_props[obj]['centroid']-self.shifts[ii] for obj in obj2])
-
+        for ti in xrange(len(self.series)-1):
+            obj1, obj2 = self.series[ti].obj_list, self.series[ti+1].obj_list
+            points1 = np.array([self.series[ti].region_props[obj]['centroid'] for obj in obj1])
+            points2 = np.array([self.series[ti+1].region_props[obj]['centroid']-self.shifts[ti] for obj in obj2])
             m12, m21 = match_func(points2, points1, dmax)
             for parent, child in zip(m21, obj2):
                 if parent!=-1:
-                    self.series[ii].children[obj1[parent]].append(child)
-                    self.series[ii+1].parents[child].append(obj1[parent])
+                    self.series[ti].children[obj1[parent]].append(child)
+                    self.series[ti+1].parents[child].append(obj1[parent])
 
-            print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ii, ii+1, 'respectively'
+            print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ti, ti+1, 'respectively'
 
     ####################################################################
     ### Phylogeny
@@ -264,7 +270,7 @@ class labeled_series(object):
         for ti,tp in enumerate(self.series):
             for oi in tp.obj_list:
                 if oi not in tp.parents: # oi does not have a parent
-                    print "new tree found at time",ti, "with object id",oi
+                    print "new tree found at time",ti, "with object id",oi, "as root"
                     self.trees.append((ti, self.build_tree(ti,oi)))
 
     def build_tree(self,ti,oi):
@@ -282,7 +288,6 @@ class labeled_series(object):
         recursively add children to the tree.
         '''
         node_children = self.series[ti].children[oi]
-        print node_children
         clade.split(len(node_children))
         for ci,child in enumerate(node_children):
             clade.clades[ci].name = str((ti+1,child))
