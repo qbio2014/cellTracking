@@ -114,6 +114,11 @@ class segmented_image(object):
     simple class providing utility functions to work with segmented images
     TODO: add functionality to read images of disk
     '''
+
+    ####################################################################################
+    # constructor
+    ####################################################################################    
+    
     def __init__(self, seg_img, img, copy_image=False):
         self.image_fname = ''
         self.seg_fname = ''
@@ -125,15 +130,21 @@ class segmented_image(object):
             self.seg_img = seg_img
             self.img = img    
 
-        def get_img(self):
-            return self.img
-
-        def get_seg_img(self):
-            return self.seg_img
+    ####################################################################################
+    # methods
+    ####################################################################################
 
 
-class labeled_image(segmented_image):
+    def get_img(self):
+        return self.img
+
+    def get_seg_img(self):
+        return self.seg_img
+
+
+class labeled_image(segmented_image):   
     '''
+    child of segmented_image
     simple class providing utility functions to work with labeled objects
     '''
     def __init__(self, seg_img, img, min_size = None, copy_image=False):
@@ -163,6 +174,37 @@ class labeled_image(segmented_image):
         '''
         self.obj_list= [label_i for label_i, obj in self.region_props.iteritems()
                             if obj[prop]>=lower_th and obj[prop]<upper_th]
+        self.obj_list.sort()
+        # reset the parents and children since assignments have been invalidated after
+        # redefining the object set.
+        self.parents = defaultdict(list)
+        self.children = defaultdict(list)
+        return self.obj_list
+        
+    def filter_objects_multiProp(self, criteria, gate = 'AND'):
+        '''
+        filter the list of objects by a given property using a lower and upper threshold.
+        updates self.obj_list with objects passing filter only
+        criteria: Dictionary with string, and value tuples. 
+        '''
+        passing_filter = {} # instantiate dictionary       
+        for prop, (low,up) in criteria.iteritems(): # iteritems returns key, and tuple of values
+            passing_filter[prop]= set([label_i for label_i, obj in self.region_props.iteritems()
+                                    if obj[prop]>=low and obj[prop]<up])
+                                
+        if gate == 'AND':
+            # criteria have to be met in all properties
+            self.obj_list = set(self.labeled_obj.keys())
+            for prop, val in passing_filter.iteritems():
+                self.obj_list.intersection_update(val)
+        else:
+            # criteria have to be met in one property
+            self.obj_list = set()
+            for prop, val in passing_filter.iteritems():
+                self.obj_list.update(val)
+                    
+        
+        self.obj_list = list(self.obj_list)                                            
         self.obj_list.sort()
         # reset the parents and children since assignments have been invalidated after
         # redefining the object set.
@@ -222,7 +264,7 @@ class labeled_series(object):
             if file_mask_intensity is not None:
                 for seg_name, img_name in zip(self.segmentation_files, self.image_files):
                     print "reading", seg_name, img_name
-                    self.series.append(labeled_image(import_func_seg(seg_name), imread(img_name), 
+                    self.series.append(labeled_image(import_func_seg(seg_name), import_func_int(img_name), 
                                                 min_size))
             else:
                 for seg_name in self.segmentation_files:
@@ -234,6 +276,27 @@ class labeled_series(object):
         else:
             print "no images found at", file_mask_seg
 
+    def get_object_props(self, prop, ti):
+        '''
+        Per time point in the series, extract the properties of interest as list. 
+        prop: String specifiging property name according to reginoprops
+        ti  : integer. time point
+        
+        '''
+        return [p[prop] for p in self.series[ti].region_props.values()]
+        
+    def get_object_props_allTimes(self, prop):
+        '''
+        For all time points in the series, extract the properties of interest as list. 
+        prop: String specifiging property name according to reginoprops
+        
+        '''
+        return_list = []
+        for t in range(len(self.series)):
+            return_list.extend(self.get_object_props(prop,t))
+    
+        return return_list
+
     def filter_objects(self, prop, lower_th, upper_th):
         '''
         loops over all time points and filters the objects at this time point according to 
@@ -242,6 +305,15 @@ class labeled_series(object):
         '''
         for labeled_img in self.series:
             labeled_img.filter_objects(prop, lower_th, upper_th)
+
+    def filter_objects_multiProp(self, criteria, gate = 'AND'):
+        '''
+        loops over all time points and filters the objects at this time point according to 
+        a given criterion of regionprops with upper and lower threshold
+        TODO add AND and OR operations for multiple conditions
+        '''
+        for labeled_img in self.series:
+            labeled_img.filter_objects_multiProp(criteria, gate)
 
     def calc_image_shifts(self, channel=None):
         '''
@@ -327,7 +399,6 @@ class labeled_series(object):
                 props[node.name] = self.series[ti].region_props[oi][prop]
             max_prop = max(props.values())
             for node in tree.get_terminals()+tree.get_nonterminals():
-                print cm.jet(props[node.name]/max_prop, bytes=True)[:-1]
                 node.color = [int(x) for x in cm.jet(props[node.name]/max_prop, bytes=True)[:-1]]
 
     ####################################################################
