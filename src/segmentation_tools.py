@@ -231,7 +231,7 @@ class labeled_series(object):
             print 'Shift', ii, 'to', ii+1, self.shifts[ii]
 
 
-    def track_objects(self, match_func = match_bijective, dmax = 100):
+    def track_objects(self, match_func = match_bijective, dmax = 1000):
         '''
         loops over the image series and applices the match_func to each pair of images
         '''
@@ -244,11 +244,10 @@ class labeled_series(object):
             points2 = np.array([self.series[ii+1].region_props[obj]['centroid']-self.shifts[ii] for obj in obj2])
 
             m12, m21 = match_func(points2, points1, dmax)
-            for parent, child in zip(obj1, m12):
-                self.series[ii].children[parent].append(obj2[child])
-
-            for child, parent in zip(obj2, m21):
-                self.series[ii+1].parents[child].append(obj1[parent])
+            for parent, child in zip(m21, obj2):
+                if parent!=-1:
+                    self.series[ii].children[obj1[parent]].append(child)
+                    self.series[ii+1].parents[child].append(obj1[parent])
 
             print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ii, ii+1, 'respectively'
 
@@ -283,6 +282,7 @@ class labeled_series(object):
         recursively add children to the tree.
         '''
         node_children = self.series[ti].children[oi]
+        print node_children
         clade.split(len(node_children))
         for ci,child in enumerate(node_children):
             clade.clades[ci].name = str((ti+1,child))
@@ -417,7 +417,7 @@ class labeled_series(object):
             self.plot_image_and_centroids(ti)
             if len(additional_tps):
                 for dt in additional_tps:
-                    if ti>dt:
+                    if ti>=-dt:
                         self.add_centroids(ti+dt)
             plt.savefig(save_path+format(ti,'03d')+'.'+img_format)
             plt.close()
@@ -446,8 +446,8 @@ if __name__ == '__main__':
     
     # 
     test_series = labeled_series()
-    #test_series.load_from_file('../Movie_sample/Yutao1-17_1-t-???_seg.tif', '../Movie_sample/Yutao1-17_1-t-???.tif')
-    test_series.load_from_file('../sample/proc/mem????.tif_processed.h5', '../sample/raw/mem????.tif')
+    test_series.load_from_file('../Movie_sample/Yutao1-17_1-t-???_seg.tif', '../Movie_sample/Yutao1-17_1-t-???.tif')
+    #test_series.load_from_file('../sample/proc/mem????.tif_processed.h5', '../sample/raw/mem????.tif')
     test_series.calc_image_shifts()
     test_series.filter_objects('area', lower_th = 100, upper_th = 10000)
     test_series.track_objects(match_func=match_mindist)
