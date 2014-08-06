@@ -31,7 +31,7 @@ def xcorr2fft(image1, image2):
     shift = np.where(np.abs(shift_indices-1)<np.abs(dim-shift_indices+1), -shift_indices, dim-shift_indices)
     return shift
 
-def imread_ilastik(fname, channel, p_cutoff = 0.5):
+def read_ilastik_pred(fname, channel, p_cutoff = 0.5):
     '''
     read an image from and ilastik h5 file. assumes prediction is in group /volumes/prediction
     channel specifies the object class to be returned
@@ -40,6 +40,16 @@ def imread_ilastik(fname, channel, p_cutoff = 0.5):
     import h5py
     f = h5py.File(fname,'r')
     return np.asarray(f['volume']['prediction']).squeeze()[:,:,channel]>p_cutoff
+
+def read_ilastik_data(fname):
+    '''
+    read an image from and ilastik h5 file. assumes prediction is in group /volumes/prediction
+    channel specifies the object class to be returned
+    p_cutoff is the threshold for the posterior probability
+    '''
+    import h5py
+    f = h5py.File(fname,'r')
+    return np.asarray(f['volume']['data']).squeeze()
 
 def match_mindist(X2, X1, dmax):
     '''
@@ -102,8 +112,11 @@ def match_bijective(X2,X1,dmax):
 class segmented_image(object):
     '''
     simple class providing utility functions to work with segmented images
+    TODO: add functionality to read images of disk
     '''
     def __init__(self, seg_img, img, copy_image=False):
+        self.image_fname = ''
+        self.seg_fname = ''
         if copy_image:
             self.seg_img = seg_img.copy()
             if img is not None: self.img = img.copy()
@@ -111,6 +124,12 @@ class segmented_image(object):
         else:
             self.seg_img = seg_img
             self.img = img    
+
+        def get_img(self):
+            return self.img
+
+        def get_seg_img(self):
+            return self.seg_img
 
 
 class labeled_image(segmented_image):
@@ -178,14 +197,21 @@ class labeled_series(object):
         self.segmentation_files.sort()
         # determine file format and specify loading function
         if file_mask_seg.split('.')[-1].startswith('tif'):
-            import_func = imread
+            import_func_seg = imread
         elif file_mask_seg.split('.')[-1].startswith('h5'):
-            import_func = lambda img:imread_ilastik(img, channel, p_cutoff)
+            import_func_seg = lambda img:read_ilastik_pred(img, channel, p_cutoff)
         else:
             print 'unsupported image format'
 
+
         # if intensity image names are provided, load and sort them too. truncate list if too many images found
         if file_mask_intensity is not None:
+            if file_mask_intensity.split('.')[-1].startswith('tif'):
+                import_func_int = imread
+            elif file_mask_intensity.split('.')[-1].startswith('h5'):
+                import_func_int = lambda img:read_ilastik_data(img)
+            else:
+                print 'unsupported image format'
             self.image_files = glob(file_mask_intensity)
             self.image_files.sort()
             if len(self.image_files)>len(self.segmentation_files):
@@ -196,12 +222,12 @@ class labeled_series(object):
             if file_mask_intensity is not None:
                 for seg_name, img_name in zip(self.segmentation_files, self.image_files):
                     print "reading", seg_name, img_name
-                    self.series.append(labeled_image(import_func(seg_name), imread(img_name), 
+                    self.series.append(labeled_image(import_func_seg(seg_name), imread(img_name), 
                                                 min_size))
             else:
                 for seg_name in self.segmentation_files:
                     print "reading", seg_name
-                    self.series.append(labeled_image(import_func(seg_name), None, min_size))
+                    self.series.append(labeled_image(import_func_seg(seg_name), None, min_size))
         
             self.dim = self.series[-1].seg_img.shape
             [self.color_randomly(ti) for ti in range(len(self.series))]
@@ -293,7 +319,16 @@ class labeled_series(object):
             clade.clades[ci].name = str((ti+1,child))
             self.add_subtree(clade.clades[ci], ti+1, child)
     
-
+    def color_trees(self, prop):
+        for _, tree in self.trees:
+            props = {}
+            for node in tree.get_terminals()+tree.get_nonterminals():
+                ti, oi = map(int, node.name[1:-1].split(','))
+                props[node.name] = self.series[ti].region_props[oi][prop]
+            max_prop = max(props.values())
+            for node in tree.get_terminals()+tree.get_nonterminals():
+                print cm.jet(props[node.name]/max_prop, bytes=True)[:-1]
+                node.color = [int(x) for x in cm.jet(props[node.name]/max_prop, bytes=True)[:-1]]
 
     ####################################################################
     ### coloring
