@@ -6,7 +6,7 @@ import os
 
 
 #####
-# Import images from disc
+# Import images from disc and threshold the prediction map
 #####
 
 # activate plotting in interactive mode
@@ -21,8 +21,9 @@ myS.load_from_file('../sahand_test/pred/Yutao1-17_1-c-???.h5_processed.h5', '../
 
 
 
+
 #####
-# Quality filter images
+# Quality filter images based on certain object features
 #####
 
 # generate the histogram of a region property (area) to get an estimate of segmentation quality
@@ -34,10 +35,12 @@ plt.draw()
 lower_th = int(raw_input('Enter lower cut_off: '))
 upper_th = int(raw_input('Enter upper cut_off: '))
 
+# simpler version for object filtering
 #myS.filter_objects('area', lower_th = lower_th, upper_th = upper_th)
 
 # filter objects with given area cut offs. Multiple filters in conunction are possible. 
-myS.filter_objects_multiProp({'area':(lower_th,upper_th)},'OR')
+myS.filter_objects_multiProp({'area':(lower_th,upper_th),
+                              'eccentricity':(0.3,1)},'OR')
 
 
 # generate a folder for saving quality estimates 
