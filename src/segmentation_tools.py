@@ -378,7 +378,7 @@ class labeled_series(object):
                         self.series[ti].children[obj1[parent]].append(child)
                         self.series[ti+1].parents[child].append(obj1[parent])
             else:
-                print "no objects in image at time",t1,"after filtering"
+                print "no objects in image at time",ti,"after filtering"
 
             print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ti, ti+1, 'respectively'
 
