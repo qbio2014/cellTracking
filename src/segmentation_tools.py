@@ -122,7 +122,7 @@ class segmented_image(object):
     def __init__(self, seg_fname, image_fname=None, save_image=False, p_cutoff = 0.5, channel = 1):
         self.p_cutoff = p_cutoff  # ilastik posterior probability cutoff
         self.channel = channel     # ilastik segmentation channel
-
+        
         self.image_fname = image_fname
         self.seg_fname = seg_fname
         if save_image:
@@ -191,10 +191,7 @@ class labeled_image(segmented_image):
         self.parents = defaultdict(list)
         self.children = defaultdict(list)
 
-        if min_size is not None:
-            labeled_img, self.n_objects = ndimage.label(remove_small_objects(self.get_seg(), min_size))
-        else:
-            labeled_img, self.n_objects = ndimage.label(self.get_seg())
+        labeled_img = self.get_labeled_img()
 
         # make a dictionary that links the label th the slice of the image
         # in which the object is found.  
@@ -219,6 +216,14 @@ class labeled_image(segmented_image):
         self.parents = defaultdict(list)
         self.children = defaultdict(list)
         return self.obj_list
+
+    def get_labeled_img(self):
+        if min_size is not None:
+            labeled_img, self.n_objects = ndimage.label(remove_small_objects(self.get_seg(), min_size))
+        else:
+            labeled_img, self.n_objects = ndimage.label(self.get_seg())
+        return labeled_img
+
         
     def filter_objects_multiProp(self, criteria, gate = 'AND'):
         '''
