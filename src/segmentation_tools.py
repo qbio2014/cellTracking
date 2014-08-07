@@ -119,27 +119,66 @@ class segmented_image(object):
     # constructor
     ####################################################################################    
     
-    def __init__(self, seg_img, img, copy_image=False):
-        self.image_fname = ''
-        self.seg_fname = ''
-        if copy_image:
-            self.seg_img = seg_img.copy()
-            if img is not None: self.img = img.copy()
-            else: self.img=None
+    def __init__(self, seg_fname, image_fname=None, save_image=False):
+        self.p_cutoff = 0.5  # ilastik posterior probability cutoff
+        self.channel = 1     # ilastik segmentation channel
+
+        self.image_fname = image_fname
+        self.seg_fname = seg_fname
+        if save_image:
+            self.seg = self.get_seg()
+            if self.image_fname is not None: self.img = self.get_img()
+        else: 
+            self.img=None
+            self.seg = None
+        tmp_seg = self.get_seg()
+        self.seg_shape = tmp_seg.shape
+        print "segmentation dimensions:", self.seg_shape
+        if self.image_fname is not None:
+            tmp_img = self.get_img()
+            self.img_shape = tmp_img.shape
+            print "image dimensions:", self.img_shape
         else:
-            self.seg_img = seg_img
-            self.img = img    
+            self.img_shape = None
 
     ####################################################################################
     # methods
     ####################################################################################
 
-
+    def get_seg(self):
+        '''
+        return segmented image. load from file if not saved
+        '''
+        if self.seg is not None:
+            return self.seg
+        else:
+            # determine file format and specify loading function
+            if self.seg_fname.split('.')[-1].startswith('tif'):
+                return imread(self.seg_fname)
+            elif self.seg_fname.split('.')[-1].startswith('h5'):
+                return read_ilastik_pred(self.seg_fname, self.channel, self.p_cutoff)
+            else:
+                print 'unsupported image format'            
+                return None
+            
     def get_img(self):
-        return self.img
+        '''
+        return intensity image. load from file if not saved.
+        '''
+        if self.seg is not None:
+            return self.seg
+        elif self.image_fname is not None:
+            # determine file format and specify loading function
+            if self.image_fname.split('.')[-1].startswith('tif'):
+                return imread(self.image_fname)
+            elif self.image_fname.split('.')[-1].startswith('h5'):
+                return read_ilastik_data(self.image_fname)
+            else:
+                print 'unsupported image format'            
+                return None            
+        else:
+            return None
 
-    def get_seg_img(self):
-        return self.seg_img
 
 
 class labeled_image(segmented_image):   
@@ -147,23 +186,23 @@ class labeled_image(segmented_image):
     child of segmented_image
     simple class providing utility functions to work with labeled objects
     '''
-    def __init__(self, seg_img, img, min_size = None, copy_image=False):
-        segmented_image.__init__(self,seg_img, img,copy_image)
+    def __init__(self, seg_fname, img_fname, min_size = None, save_image=False):
+        segmented_image.__init__(self,seg_fname, img_fname,save_image)
         self.parents = defaultdict(list)
         self.children = defaultdict(list)
 
         if min_size is not None:
-            self.labeled_img, self.n_objects = ndimage.label(remove_small_objects(self.seq_img, min_size))
+            labeled_img, self.n_objects = ndimage.label(remove_small_objects(self.get_seg(), min_size))
         else:
-            self.labeled_img, self.n_objects = ndimage.label(self.seg_img)
+            labeled_img, self.n_objects = ndimage.label(self.get_seg())
 
         # make a dictionary that links the label th the slice of the image
         # in which the object is found.  
         self.labeled_obj = {label_i+1:o_slice for label_i, o_slice in 
-                            enumerate(ndimage.find_objects(self.labeled_img))}
+                            enumerate(ndimage.find_objects(labeled_img))}
 
         self.region_props = {label_i+1:o_slice for label_i, o_slice in 
-                            enumerate(regionprops(self.labeled_img, intensity_image = self.img))}
+                            enumerate(regionprops(labeled_img, intensity_image = self.get_img()))}
         self.obj_list = self.labeled_obj.keys()
         self.obj_list.sort()
     
@@ -237,23 +276,9 @@ class labeled_series(object):
         # make list of segmentation files to be loaded, sort them
         self.segmentation_files = glob(file_mask_seg)
         self.segmentation_files.sort()
-        # determine file format and specify loading function
-        if file_mask_seg.split('.')[-1].startswith('tif'):
-            import_func_seg = imread
-        elif file_mask_seg.split('.')[-1].startswith('h5'):
-            import_func_seg = lambda img:read_ilastik_pred(img, channel, p_cutoff)
-        else:
-            print 'unsupported image format'
-
 
         # if intensity image names are provided, load and sort them too. truncate list if too many images found
         if file_mask_intensity is not None:
-            if file_mask_intensity.split('.')[-1].startswith('tif'):
-                import_func_int = imread
-            elif file_mask_intensity.split('.')[-1].startswith('h5'):
-                import_func_int = lambda img:read_ilastik_data(img)
-            else:
-                print 'unsupported image format'
             self.image_files = glob(file_mask_intensity)
             self.image_files.sort()
             if len(self.image_files)>len(self.segmentation_files):
@@ -264,14 +289,13 @@ class labeled_series(object):
             if file_mask_intensity is not None:
                 for seg_name, img_name in zip(self.segmentation_files, self.image_files):
                     print "reading", seg_name, img_name
-                    self.series.append(labeled_image(import_func_seg(seg_name), import_func_int(img_name), 
-                                                min_size))
+                    self.series.append(labeled_image(seg_name, img_name, min_size))
             else:
                 for seg_name in self.segmentation_files:
                     print "reading", seg_name
-                    self.series.append(labeled_image(import_func_seg(seg_name), None, min_size))
+                    self.series.append(labeled_image(seg_name, None, min_size))
         
-            self.dim = self.series[-1].seg_img.shape
+            self.dim = self.series[-1].seg_shape
             [self.color_randomly(ti) for ti in range(len(self.series))]
         else:
             print "no images found at", file_mask_seg
@@ -330,14 +354,14 @@ class labeled_series(object):
         for ti in xrange(len(self.series)-1):
             try:
                 if channel is None:
-                    if len(self.series[ti].img.shape)==2:
-                        img1, img2 = self.series[ti].img, self.series[ti+1].img
+                    if len(self.series[ti].img_shape)==2:
+                        img1, img2 = self.series[ti].get_img(), self.series[ti+1].get_img()
                     else:
-                        img1, img2 = self.series[ti].img.max(axis=-1), self.series[ti+1].img.max(axis=-1)
+                        img1, img2 = self.series[ti].get_img().max(axis=-1), self.series[ti+1].get_img().max(axis=-1)
                 else:
-                    img1, img2 = self.series[ti].img[:,:,channel], self.series[ti+1].img[:,:,channel]
+                    img1, img2 = self.series[ti].get_img()[:,:,channel], self.series[ti+1].get_img()[:,:,channel]
             except:
-                img1, img2 = self.series[ti].seg_img>0, self.series[ti+1].seg_img>0
+                img1, img2 = self.series[ti].get_seg()>0, self.series[ti+1].get_seg()>0
             self.shifts[ti] = xcorr2fft(img1, img2)
             print 'Shift', ti, 'to', ti+1, self.shifts[ti]
 
@@ -455,8 +479,8 @@ class labeled_series(object):
         for label_i in self.series[ti].obj_list:
             x,y = self.series[ti].region_props[label_i]['centroid']
             plt.plot([y],[x], 'o', c=self.colorlookup[ti][label_i])
-        plt.ylim(0,self.series[ti].seg_img.shape[0])
-        plt.xlim(0,self.series[ti].seg_img.shape[1])
+        plt.ylim(0,self.series[ti].seg_shape[0])
+        plt.xlim(0,self.series[ti].seg_shape[1])
 
     def add_forward_trajectory(self, ti, oi):
         '''
@@ -502,9 +526,9 @@ class labeled_series(object):
             fig = plt.figure()
             ax = plt.subplot(111)
         try:  # plot intensity image if available
-            ax.imshow(self.series[ti].img, interpolation='nearest', cmap = cm.gray)
+            ax.imshow(self.series[ti].get_img(), interpolation='nearest', cmap = cm.gray)
         except: # fallback to labeled image
-            ax.imshow(self.series[ti].labeled_img, interpolation='nearest', cmap = cm.gray)
+            ax.imshow(self.series[ti].get_seg(), interpolation='nearest', cmap = cm.gray)
         self.add_centroids(ti)        
         
     def plot_image_and_trajectories(self, ti, ax=None, bwd = False, fwd = True):
@@ -517,14 +541,14 @@ class labeled_series(object):
             fig = plt.figure()
             ax = plt.subplot(111)
         try:
-            ax.imshow(self.series[ti].img, interpolation='nearest',cmap = cm.gray)
+            ax.imshow(self.series[ti].get_img(), interpolation='nearest',cmap = cm.gray)
         except:
-            ax.imshow(self.series[ti].labeled_img, interpolation='nearest',cmap = cm.gray)
+            ax.imshow(self.series[ti].get_seg(), interpolation='nearest',cmap = cm.gray)
         for oi in self.series[ti].obj_list:
             if fwd: self.add_forward_trajectory(ti,oi)        
             if bwd: self.add_backward_trajectory(ti,oi)        
-        plt.ylim(0,self.series[ti].seg_img.shape[0])
-        plt.xlim(0,self.series[ti].seg_img.shape[1])
+        plt.ylim(0,self.series[ti].seg_shape)
+        plt.xlim(0,self.series[ti].seg_shape)
 
     def save_QC_series(self,save_path, additional_tps = [], img_format='png'):
         '''
@@ -560,18 +584,3 @@ if __name__ == '__main__':
     test_image =  np.exp(-(X-center[0])**2 - (Y-center[1])**2) + 0.01*np.random.randn(100,100)
     test_image2 = np.exp(-(X-center[0]-shift[0])**2 - (Y-center[1]-shift[1])**2)+ 0.01*np.random.randn(100,100)
     print 'True:', shift, 'Inferred:', xcorr2fft(test_image, test_image2)
-    
-    # 
-    test_series = labeled_series()
-    test_series.load_from_file('../Movie_sample/Yutao1-17_1-t-???_seg.tif', '../Movie_sample/Yutao1-17_1-t-???.tif')
-    #test_series.load_from_file('../sample/proc/mem????.tif_processed.h5', '../sample/raw/mem????.tif')
-    test_series.calc_image_shifts()
-    test_series.filter_objects('area', lower_th = 100, upper_th = 10000)
-    test_series.track_objects(match_func=match_mindist)
-    test_series.color_lineages()
-    test_series.save_QC_series('tmp/img_')
-
-    test_series.plot_image_and_centroids(5)
-    test_series.add_centroids(6)    
-    test_series.plot_image_and_trajectories(5, fwd=True, bwd=False)
-
