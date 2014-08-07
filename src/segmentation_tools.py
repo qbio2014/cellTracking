@@ -119,9 +119,9 @@ class segmented_image(object):
     # constructor
     ####################################################################################    
     
-    def __init__(self, seg_fname, image_fname=None, save_image=False):
-        self.p_cutoff = 0.5  # ilastik posterior probability cutoff
-        self.channel = 1     # ilastik segmentation channel
+    def __init__(self, seg_fname, image_fname=None, save_image=False, p_cutoff = 0.5, channel = 1):
+        self.p_cutoff = p_cutoff  # ilastik posterior probability cutoff
+        self.channel = channel     # ilastik segmentation channel
 
         self.image_fname = image_fname
         self.seg_fname = seg_fname
@@ -186,8 +186,8 @@ class labeled_image(segmented_image):
     child of segmented_image
     simple class providing utility functions to work with labeled objects
     '''
-    def __init__(self, seg_fname, img_fname, min_size = None, save_image=False):
-        segmented_image.__init__(self,seg_fname, img_fname,save_image)
+    def __init__(self, seg_fname, img_fname, min_size = None, save_image=False, channel = 1, p_cutoff = 0.5):
+        segmented_image.__init__(self,seg_fname, img_fname,save_image, channel=channel,p_cutoff=p_cutoff)
         self.parents = defaultdict(list)
         self.children = defaultdict(list)
 
@@ -289,11 +289,11 @@ class labeled_series(object):
             if file_mask_intensity is not None:
                 for seg_name, img_name in zip(self.segmentation_files, self.image_files):
                     print "reading", seg_name, img_name
-                    self.series.append(labeled_image(seg_name, img_name, min_size))
+                    self.series.append(labeled_image(seg_name, img_name, min_size, channel = channel, p_cutoff=p_cutoff))
             else:
                 for seg_name in self.segmentation_files:
                     print "reading", seg_name
-                    self.series.append(labeled_image(seg_name, None, min_size))
+                    self.series.append(labeled_image(seg_name, None, min_size, channel = channel, p_cutoff=p_cutoff))
         
             self.dim = self.series[-1].seg_shape
             [self.color_randomly(ti) for ti in range(len(self.series))]
@@ -549,6 +549,7 @@ class labeled_series(object):
         saves each time frame to file and adds the centroids of subsequent time slices.
         '''
         for ti in xrange(len(self.series)):
+            plt.ioff()
             self.plot_image_and_centroids(ti)
             if len(additional_tps):
                 for dt in additional_tps:
