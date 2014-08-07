@@ -329,9 +329,6 @@ class labeled_series(object):
         '''
         for ti,labeled_img in enumerate(self.series):
             labeled_img.filter_objects(prop, lower_th, upper_th)
-            if not self.obj_list:
-                print "no objects in image at time",ti, "after filtering"
-                self.series.pop(ti)
 
     def filter_objects_multiProp(self, criteria, gate = 'AND'):
         '''
@@ -341,9 +338,6 @@ class labeled_series(object):
         '''
         for ti,labeled_img in enumerate(self.series):
             labeled_img.filter_objects_multiProp(criteria, gate)
-            if not self.obj_list:
-                print "no objects in image at time",ti, "after filtering"
-                self.series.pop(ti)
 
     def calc_image_shifts(self, channel=None):
         '''
@@ -375,13 +369,16 @@ class labeled_series(object):
 
         for ti in xrange(len(self.series)-1):
             obj1, obj2 = self.series[ti].obj_list, self.series[ti+1].obj_list
-            points1 = np.array([self.series[ti].region_props[obj]['centroid'] for obj in obj1])
-            points2 = np.array([self.series[ti+1].region_props[obj]['centroid']-self.shifts[ti] for obj in obj2])
-            m12, m21 = match_func(points2, points1, dmax)
-            for parent, child in zip(m21, obj2):
-                if parent!=-1:
-                    self.series[ti].children[obj1[parent]].append(child)
-                    self.series[ti+1].parents[child].append(obj1[parent])
+            if len(obj1) and len(obj2):
+                points1 = np.array([self.series[ti].region_props[obj]['centroid'] for obj in obj1])
+                points2 = np.array([self.series[ti+1].region_props[obj]['centroid']-self.shifts[ti] for obj in obj2])
+                m12, m21 = match_func(points2, points1, dmax)
+                for parent, child in zip(m21, obj2):
+                    if parent!=-1:
+                        self.series[ti].children[obj1[parent]].append(child)
+                        self.series[ti+1].parents[child].append(obj1[parent])
+            else:
+                print "no objects in image at time",t1,"after filtering"
 
             print "matched", (m12>-1).sum(), 'objects.', (m12==-1).sum() , (m21==-1).sum(), 'left unmatched in time step', ti, ti+1, 'respectively'
 
