@@ -190,7 +190,7 @@ class labeled_image(segmented_image):
         segmented_image.__init__(self,seg_fname, img_fname,save_image, channel=channel,p_cutoff=p_cutoff)
         self.parents = defaultdict(list)
         self.children = defaultdict(list)
-
+        self.min_size = min_size
         labeled_img = self.get_labeled_img()
 
         # make a dictionary that links the label th the slice of the image
