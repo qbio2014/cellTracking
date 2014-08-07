@@ -218,8 +218,8 @@ class labeled_image(segmented_image):
         return self.obj_list
 
     def get_labeled_img(self):
-        if min_size is not None:
-            labeled_img, self.n_objects = ndimage.label(remove_small_objects(self.get_seg(), min_size))
+        if self.min_size is not None:
+            labeled_img, self.n_objects = ndimage.label(remove_small_objects(self.get_seg(), self.min_size))
         else:
             labeled_img, self.n_objects = ndimage.label(self.get_seg())
         return labeled_img
