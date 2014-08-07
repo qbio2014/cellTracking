@@ -303,8 +303,11 @@ class labeled_series(object):
         a given criterion of regionprops with upper and lower threshold
         TODO add AND and OR operations for multiple conditions
         '''
-        for labeled_img in self.series:
+        for ti,labeled_img in enumerate(self.series):
             labeled_img.filter_objects(prop, lower_th, upper_th)
+            if not self.obj_list:
+                print "no objects in image at time",ti, "after filtering"
+                self.series.pop(ti)
 
     def filter_objects_multiProp(self, criteria, gate = 'AND'):
         '''
@@ -312,8 +315,11 @@ class labeled_series(object):
         a given criterion of regionprops with upper and lower threshold
         TODO add AND and OR operations for multiple conditions
         '''
-        for labeled_img in self.series:
+        for ti,labeled_img in enumerate(self.series):
             labeled_img.filter_objects_multiProp(criteria, gate)
+            if not self.obj_list:
+                print "no objects in image at time",ti, "after filtering"
+                self.series.pop(ti)
 
     def calc_image_shifts(self, channel=None):
         '''
